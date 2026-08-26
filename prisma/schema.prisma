@@ -1,0 +1,403 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  username  String   @unique
+  password  String
+  image     String?
+  bio       String?
+  role      String   @default("EDITOR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  posts     Post[]
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  posts     Post[]
+}
+
+model Post {
+  id              Int       @id @default(autoincrement())
+  title           String
+  slug            String    @unique
+  excerpt         String?
+  content         String
+  image           String?
+  published       Boolean   @default(false)
+  authorId        Int
+  categoryId      Int?
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  author          User      @relation(fields: [authorId], references: [id])
+  category        Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([authorId])
+  @@index([categoryId])
+}
+
+model Agenda {
+  id          Int      @id @default(autoincrement())
+  title       String
+  slug        String   @unique
+  date        DateTime
+  location    String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Download {
+  id        Int      @id @default(autoincrement())
+  title     String
+  fileUrl   String
+  category  String   @default("Umum")
+  createdAt DateTime @default(now())
+}
+
+model Gallery {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  cover       String?
+  images      String
+  createdAt   DateTime @default(now())
+}
+
+model Teacher {
+  id        Int      @id @default(autoincrement())
+  name      String
+  nip       String?
+  position  String
+  subject   String?
+  image     String?
+  password  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  elearningCourses ElearningCourse[]
+}
+
+model PageContent {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  title     String
+  content   String
+  meta      String?
+  updatedAt DateTime @updatedAt
+}
+
+model Achievement {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  category    String
+  level       String
+  rank        String?
+  date        DateTime
+  image       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Extracurricular {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  image       String?
+  schedule    String?
+  location    String?
+  pembina     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Facility {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  image       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Inquiry {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Announcement {
+  id        Int       @id @default(autoincrement())
+  title     String
+  content   String?
+  type      String    @default("INFO")
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Alumni {
+  id             Int      @id @default(autoincrement())
+  name           String
+  graduationYear Int
+  currentStatus  String?
+  institution    String?
+  image          String?
+  phone          String?
+  email          String?
+  isVerified     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model FeaturedProgram {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  icon        String
+  color       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Video {
+  id        Int      @id @default(autoincrement())
+  title     String
+  url       String
+  youtubeId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Competition {
+  id          Int                     @id @default(autoincrement())
+  title       String
+  slug        String                  @unique
+  description String?
+  image       String?
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean                 @default(true)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  submissions CompetitionSubmission[]
+}
+
+model CompetitionSubmission {
+  id            Int         @id @default(autoincrement())
+  competitionId Int
+  fullName      String
+  email         String
+  phone         String?
+  school        String?
+  workUrl       String
+  status        String      @default("PENDING")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  competition   Competition @relation(fields: [competitionId], references: [id])
+}
+
+model RateLimit {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  count     Int      @default(1)
+  resetAt   DateTime
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  userId     Int?
+  action     String
+  resource   String
+  resourceId Int?
+  details    String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([resource])
+}
+
+model Student {
+  id           Int                   @id @default(autoincrement())
+  nis          String                @unique
+  nisn         String?
+  name         String
+  class        String
+  status       String                @default("AKTIF") // AKTIF, LULUS, KELUAR
+  password     String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  violations   StudentViolation[]
+  classHistory StudentClassHistory[]
+  elearningSubmissions ElearningSubmission[]
+  elearningEnrollments ElearningEnrollment[]
+}
+
+model StudentViolation {
+  id            Int      @id @default(autoincrement())
+  studentId     Int
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  violationDate DateTime @default(now())
+  description   String
+  penalty       String?
+  points        Int      @default(0)
+  reporterName  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([studentId])
+}
+
+model AcademicYear {
+  id           Int                   @id @default(autoincrement())
+  name         String                @unique // contoh: "2025/2026"
+  isActive     Boolean               @default(false)
+  startDate    DateTime
+  endDate      DateTime
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  classHistory StudentClassHistory[]
+  elearningCourses ElearningCourse[]
+}
+
+model StudentClassHistory {
+  id             Int          @id @default(autoincrement())
+  studentId      Int
+  academicYearId Int
+  class          String
+  status         String       @default("AKTIF") // AKTIF, LULUS, KELUAR, TIDAK_NAIK
+  notes          String?
+  createdAt      DateTime     @default(now())
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  @@unique([studentId, academicYearId])
+  @@index([studentId])
+  @@index([academicYearId])
+}
+
+model ElearningCourse {
+  id             Int             @id @default(autoincrement())
+  title          String
+  description    String?
+  targetClass    String?
+  teacherId      Int
+  academicYearId Int
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  teacher        Teacher         @relation(fields: [teacherId], references: [id])
+  academicYear   AcademicYear    @relation(fields: [academicYearId], references: [id])
+  modules        ElearningModule[]
+  assignments    ElearningAssignment[]
+  enrollments    ElearningEnrollment[]
+
+  @@index([teacherId])
+  @@index([academicYearId])
+}
+
+model ElearningModule {
+  id          Int      @id @default(autoincrement())
+  courseId    Int
+  title       String
+  content     String?  
+  videoUrl    String?  
+  documentUrl String?  
+  imageUrl    String?  
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course      ElearningCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+}
+
+model ElearningAssignment {
+  id              Int      @id @default(autoincrement())
+  courseId        Int
+  title           String
+  description     String?
+  kktp            String?  
+  dueDate         DateTime?
+  type            String   @default("TUGAS") 
+  questionFileUrl String?
+  rubric          String?
+  maxScore        Float    @default(100)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  course      ElearningCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  submissions ElearningSubmission[]
+
+  @@index([courseId])
+}
+
+model ElearningSubmission {
+  id           Int      @id @default(autoincrement())
+  assignmentId Int
+  studentId    Int
+  content      String?  
+  fileUrl      String?  
+  linkUrl      String?
+  score        Float?   
+  feedback     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignment   ElearningAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@index([assignmentId])
+  @@index([studentId])
+}
+
+model ElearningEnrollment {
+  id        Int      @id @default(autoincrement())
+  courseId  Int
+  studentId Int
+  points    Int      @default(0) 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course    ElearningCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student   Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, studentId])
+  @@index([courseId])
+  @@index([studentId])
+}
