@@ -58,7 +58,7 @@ jobs:
 
       - name: Install Dependencies
         if: steps.npm-cache.outputs.cache-hit != 'true'
-        run: npm ci
+        run: npm ci || npm install
 
       # Cache .next/cache for faster rebuilds
       - name: Cache Next.js Build
