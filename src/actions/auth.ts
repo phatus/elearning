@@ -1,7 +1,7 @@
 'use server'
 
 import prisma from "@/lib/db"
-import { createStudentSession, createTeacherSession, destroyStudentSession, destroyTeacherSession, getTeacherSession, getStudentSession } from "@/lib/auth-session"
+import { createStudentSession, createTeacherSession, destroyStudentSession, destroyTeacherSession, getTeacherSession, getStudentSession, createAdminSession, destroyAdminSession, getAdminSession } from "@/lib/auth-session"
 import { syncDataFromWebMadrasah } from "./elearning"
 import { redirect } from "next/navigation"
 
@@ -125,3 +125,131 @@ export async function logoutTeacherAction() {
     await destroyTeacherSession()
     redirect('/login-guru')
 }
+
+// ---------------------------------------------
+// ADMIN AUTH ACTIONS
+// ---------------------------------------------
+
+export async function loginAdminAction(formData: FormData) {
+    const username = (formData.get('username') as string || '').trim()
+    const password = (formData.get('password') as string || '').trim()
+
+    if (!username || !password) return { success: false, error: "Username dan Password wajib diisi" }
+
+    try {
+        let user = await prisma.user.findUnique({ where: { username } })
+
+        // Auto-seed default admin if no User exists
+        if (!user && username === 'admin') {
+            const userCount = await prisma.user.count()
+            if (userCount === 0) {
+                user = await prisma.user.create({
+                    data: {
+                        name: "Administrator E-Learning",
+                        username: "admin",
+                        password: "admin123",
+                        role: "ADMIN"
+                    }
+                })
+            }
+        }
+
+        if (!user) {
+            return { success: false, error: "Username Admin tidak ditemukan" }
+        }
+
+        if (user.password !== password) {
+            return { success: false, error: "Password Admin salah" }
+        }
+
+        await createAdminSession(user)
+        return { success: true }
+    } catch (error: any) {
+        console.error("Login admin error:", error)
+        return { success: false, error: "Terjadi kesalahan saat login Admin" }
+    }
+}
+
+export async function logoutAdminAction() {
+    await destroyAdminSession()
+    redirect('/login-admin')
+}
+
+export async function resetStudentPasswordAction(studentId: number, newPassword?: string) {
+    const session = await getAdminSession()
+    if (!session) return { success: false, error: "Unauthorized: Hanya Admin yang dapat mereset password." }
+
+    try {
+        await prisma.student.update({
+            where: { id: studentId },
+            data: { password: newPassword || null }
+        })
+        return { success: true, message: "Password siswa berhasil di-reset" }
+    } catch (error: any) {
+        return { success: false, error: "Gagal mereset password siswa" }
+    }
+}
+
+export async function resetTeacherPasswordAction(teacherId: number, newPassword?: string) {
+    const session = await getAdminSession()
+    if (!session) return { success: false, error: "Unauthorized: Hanya Admin yang dapat mereset password." }
+
+    try {
+        await prisma.teacher.update({
+            where: { id: teacherId },
+            data: { password: newPassword || null }
+        })
+        return { success: true, message: "Password guru berhasil di-reset" }
+    } catch (error: any) {
+        return { success: false, error: "Gagal mereset password guru" }
+    }
+}
+
+export async function updateAdminAccountAction(formData: FormData) {
+    const session = await getAdminSession()
+    if (!session) return { success: false, error: "Unauthorized: Silakan login kembali." }
+
+    const name = (formData.get('name') as string || '').trim()
+    const username = (formData.get('username') as string || '').trim()
+    const currentPassword = (formData.get('currentPassword') as string || '').trim()
+    const newPassword = (formData.get('newPassword') as string || '').trim()
+
+    if (!name || !username) {
+        return { success: false, error: "Nama dan Username wajib diisi" }
+    }
+
+    try {
+        const adminUser = await prisma.user.findUnique({ where: { id: session.id } })
+        if (!adminUser) {
+            return { success: false, error: "Akun Admin tidak ditemukan" }
+        }
+
+        if (currentPassword || newPassword) {
+            if (adminUser.password !== currentPassword) {
+                return { success: false, error: "Password lama salah" }
+            }
+            if (!newPassword || newPassword.length < 4) {
+                return { success: false, error: "Password baru minimal 4 karakter" }
+            }
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: session.id },
+            data: {
+                name,
+                username,
+                ...(newPassword ? { password: newPassword } : {})
+            }
+        })
+
+        await createAdminSession(updatedUser)
+        return { success: true, message: "Konfigurasi akun Admin berhasil diperbarui." }
+    } catch (error: any) {
+        if (error?.code === 'P2002') {
+            return { success: false, error: "Username tersebut sudah digunakan oleh akun lain." }
+        }
+        return { success: false, error: "Gagal memperbarui konfigurasi akun Admin." }
+    }
+}
+
+

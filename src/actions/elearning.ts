@@ -86,8 +86,12 @@ export async function syncDataFromWebMadrasah() {
 
         await client.end()
 
-        revalidatePath('/guru')
-        revalidatePath('/siswa')
+        try {
+            revalidatePath('/guru')
+            revalidatePath('/siswa')
+        } catch (e) {
+            // ignore if called during render
+        }
         return { 
             success: true, 
             studentsCount: studentsRes.rows.length, 
@@ -595,3 +599,191 @@ export async function gradeSubmission(
         return { success: false, error: "Gagal menyimpan nilai" }
     }
 }
+
+// ---------------------------------------------
+// SERVER-SIDE PAGINATED FETCHERS
+// ---------------------------------------------
+
+export async function getPaginatedStudentsAction(params: {
+    page?: number
+    limit?: number
+    query?: string
+    className?: string
+}) {
+    const page = Math.max(Number(params.page) || 1, 1)
+    const limit = Math.max(Number(params.limit) || 10, 1)
+    const skip = (page - 1) * limit
+    const query = params.query?.trim() || ''
+    const className = params.className?.trim() || ''
+
+    const where: any = {}
+
+    if (className) {
+        where.class = className
+    }
+
+    if (query) {
+        where.OR = [
+            { name: { contains: query, mode: 'insensitive' } },
+            { nis: { contains: query, mode: 'insensitive' } },
+            { class: { contains: query, mode: 'insensitive' } },
+        ]
+    }
+
+    try {
+        const [totalCount, students] = await Promise.all([
+            prisma.student.count({ where }),
+            prisma.student.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: [{ class: 'asc' }, { name: 'asc' }],
+                select: {
+                    id: true,
+                    nis: true,
+                    name: true,
+                    class: true,
+                    status: true,
+                    password: true,
+                },
+            }),
+        ])
+
+        const totalPages = Math.ceil(totalCount / limit)
+
+        return {
+            students: students.map((s) => ({
+                id: s.id,
+                nis: s.nis,
+                name: s.name,
+                class: s.class,
+                status: s.status,
+                hasPassword: Boolean(s.password),
+            })),
+            totalCount,
+            totalPages,
+            currentPage: page,
+            limit,
+        }
+    } catch (error) {
+        console.error("Error fetching paginated students:", error)
+        return { students: [], totalCount: 0, totalPages: 1, currentPage: 1, limit }
+    }
+}
+
+export async function getPaginatedTeachersAction(params: {
+    page?: number
+    limit?: number
+    query?: string
+}) {
+    const page = Math.max(Number(params.page) || 1, 1)
+    const limit = Math.max(Number(params.limit) || 10, 1)
+    const skip = (page - 1) * limit
+    const query = params.query?.trim() || ''
+
+    const where: any = {}
+
+    if (query) {
+        where.OR = [
+            { name: { contains: query, mode: 'insensitive' } },
+            { nip: { contains: query, mode: 'insensitive' } },
+            { subject: { contains: query, mode: 'insensitive' } },
+        ]
+    }
+
+    try {
+        const [totalCount, teachers] = await Promise.all([
+            prisma.teacher.count({ where }),
+            prisma.teacher.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { name: 'asc' },
+                select: {
+                    id: true,
+                    name: true,
+                    nip: true,
+                    subject: true,
+                    password: true,
+                },
+            }),
+        ])
+
+        const totalPages = Math.ceil(totalCount / limit)
+
+        return {
+            teachers: teachers.map((t) => ({
+                id: t.id,
+                name: t.name,
+                nip: t.nip,
+                subject: t.subject,
+                hasPassword: Boolean(t.password),
+            })),
+            totalCount,
+            totalPages,
+            currentPage: page,
+            limit,
+        }
+    } catch (error) {
+        console.error("Error fetching paginated teachers:", error)
+        return { teachers: [], totalCount: 0, totalPages: 1, currentPage: 1, limit }
+    }
+}
+
+export async function getPaginatedCoursesAction(params: {
+    page?: number
+    limit?: number
+    query?: string
+}) {
+    const page = Math.max(Number(params.page) || 1, 1)
+    const limit = Math.max(Number(params.limit) || 10, 1)
+    const skip = (page - 1) * limit
+    const query = params.query?.trim() || ''
+
+    const where: any = {}
+
+    if (query) {
+        where.OR = [
+            { title: { contains: query, mode: 'insensitive' } },
+            { teacher: { name: { contains: query, mode: 'insensitive' } } },
+            { targetClass: { contains: query, mode: 'insensitive' } },
+        ]
+    }
+
+    try {
+        const [totalCount, courses] = await Promise.all([
+            prisma.elearningCourse.count({ where }),
+            prisma.elearningCourse.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    teacher: { select: { name: true } },
+                    _count: { select: { modules: true, assignments: true } },
+                },
+            }),
+        ])
+
+        const totalPages = Math.ceil(totalCount / limit)
+
+        return {
+            courses: courses.map((c) => ({
+                id: c.id,
+                title: c.title,
+                targetClass: c.targetClass,
+                teacherName: c.teacher?.name || 'Guru',
+                moduleCount: c._count.modules,
+                assignmentCount: c._count.assignments,
+            })),
+            totalCount,
+            totalPages,
+            currentPage: page,
+            limit,
+        }
+    } catch (error) {
+        console.error("Error fetching paginated courses:", error)
+        return { courses: [], totalCount: 0, totalPages: 1, currentPage: 1, limit }
+    }
+}
+

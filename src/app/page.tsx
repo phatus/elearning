@@ -29,6 +29,12 @@ export default function HomePage() {
             >
               <UserCheck className="h-5 w-5" /> Portal Kelola Guru / RDM
             </Link>
+            <Link
+              href="/admin"
+              className="px-6 py-3.5 bg-purple-900/40 text-white font-semibold rounded-2xl border border-white/30 hover:bg-purple-900/60 transition-all flex items-center gap-2"
+            >
+              <ShieldCheck className="h-5 w-5" /> Portal Admin
+            </Link>
           </div>
         </div>
 
