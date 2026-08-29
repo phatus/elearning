@@ -75,7 +75,7 @@ jobs:
           if [ -f .env ]; then
             export $(grep -v '^#' .env | xargs)
           fi
-          npx prisma generate
+          ./node_modules/.bin/prisma generate || npx prisma@5 generate || npx prisma generate
 
       - name: Backup Database
         if: steps.filter.outputs.prisma == 'true'
@@ -134,7 +134,7 @@ jobs:
         run: |
           if [ -f .env ]; then
             export $(grep -v '^#' .env | xargs)
-            npx prisma db push
+            ./node_modules/.bin/prisma db push || npx prisma@5 db push || npx prisma db push
           else
             echo "⚠️  .env file not found. Skipping db push."
           fi
