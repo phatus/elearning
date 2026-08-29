@@ -70,7 +70,6 @@ export async function syncDataFromWebMadrasah() {
                 create: {
                     id: s.id,
                     nis: s.nis,
-                    nisn: s.nisn || null,
                     name: s.name,
                     class: s.class,
                     status: s.status
@@ -78,8 +77,7 @@ export async function syncDataFromWebMadrasah() {
                 update: {
                     name: s.name,
                     class: s.class,
-                    status: s.status,
-                    nisn: s.nisn || null
+                    status: s.status
                 }
             })
         }
