@@ -103,6 +103,7 @@ export default function CourseDetailClient({ course, allCourses = [] }: { course
             return {
                 "No": index + 1,
                 "NIS": enrollment.student.nis,
+                "Nisn": (enrollment.student as any).nisn || "",
                 "Nama": enrollment.student.name,
                 "Tipe Evaluation": assignment.type,
                 "Nilai (0-100)": sub?.score !== null && sub?.score !== undefined ? sub.score : "",
@@ -441,6 +442,7 @@ export default function CourseDetailClient({ course, allCourses = [] }: { course
                                     <tr>
                                         <th className="px-5 py-3.5 font-bold text-slate-700">No</th>
                                         <th className="px-5 py-3.5 font-bold text-slate-700">NIS</th>
+                                        <th className="px-5 py-3.5 font-bold text-slate-700">NISN</th>
                                         <th className="px-5 py-3.5 font-bold text-slate-700">Nama Siswa</th>
                                         <th className="px-5 py-3.5 font-bold text-slate-700">Kelas</th>
                                     </tr>
@@ -450,6 +452,7 @@ export default function CourseDetailClient({ course, allCourses = [] }: { course
                                         <tr key={en.student.id} className="border-b last:border-0 hover:bg-slate-50">
                                             <td className="px-5 py-3.5 text-slate-500 font-medium">{idx + 1}</td>
                                             <td className="px-5 py-3.5 font-bold text-slate-900">{en.student.nis}</td>
+                                            <td className="px-5 py-3.5 text-slate-600">{(en.student as any).nisn || "-"}</td>
                                             <td className="px-5 py-3.5 font-medium">{en.student.name}</td>
                                             <td className="px-5 py-3.5 font-semibold text-indigo-600">{en.student.class}</td>
                                         </tr>

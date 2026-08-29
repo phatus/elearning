@@ -36,6 +36,7 @@ export async function POST(req: Request) {
           create: {
             id: data.id,
             nis: data.nis,
+            nisn: data.nisn || null,
             name: data.name,
             class: data.class,
             status: data.status || "AKTIF",
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
             name: data.name,
             class: data.class,
             status: data.status,
+            nisn: data.nisn || null,
             ...(data.password ? { password: data.password } : {}),
           },
         });
@@ -183,6 +185,7 @@ export async function POST(req: Request) {
             create: {
               id: Number(s.id),
               nis: s.nis,
+              nisn: s.nisn || null,
               name: s.name,
               class: s.class,
               status: s.status || "AKTIF",
@@ -191,6 +194,7 @@ export async function POST(req: Request) {
               name: s.name,
               class: s.class,
               status: s.status,
+              nisn: s.nisn || null,
             },
           });
           syncedStudents++;

@@ -252,6 +252,7 @@ model AuditLog {
 model Student {
   id           Int                   @id @default(autoincrement())
   nis          String                @unique
+  nisn         String?
   name         String
   class        String
   status       String                @default("AKTIF") // AKTIF, LULUS, KELUAR
