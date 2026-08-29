@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "NODE_OPTIONS='--require ./fix-noexec.js' node node_modules/next/dist/bin/next dev --webpack -p 3002",
     "build": "npx prisma generate && npx next build --webpack",
-    "start": "node server.js",
+    "start": "PORT=3002 node server.js",
     "db:push": "prisma db push"
   },
   "dependencies": {
