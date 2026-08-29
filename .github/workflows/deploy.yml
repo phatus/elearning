@@ -57,7 +57,6 @@ jobs:
           fi
 
       - name: Install Dependencies
-        if: steps.npm-cache.outputs.cache-hit != 'true'
         run: npm ci || npm install
 
       # Cache .next/cache for faster rebuilds
@@ -70,7 +69,6 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
 
       - name: Generate Prisma Client
-        if: steps.npm-cache.outputs.cache-hit != 'true' || steps.filter.outputs.prisma == 'true'
         run: |
           if [ -f .env ]; then
             export $(grep -v '^#' .env | xargs)
