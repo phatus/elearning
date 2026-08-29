@@ -13,42 +13,13 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Ensure Cache Folders Exist
-        run: |
-          mkdir -p .next/cache
-          mkdir -p node_modules
+        with:
+          clean: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-
-      - name: Identify Changes
-        uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            package:
-              - 'package-lock.json'
-            prisma:
-              - 'prisma/schema.prisma'
-            src:
-              - 'src/**'
-              - 'public/**'
-              - 'next.config.ts'
-              - 'next.config.js'
-              - 'package.json'
-              - 'postcss.config.js'
-              - '.github/workflows/deploy.yml'
-
-      # Cache node_modules on self-hosted runner (biggest speedup)
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        id: npm-cache
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
 
       - name: Copy .env from production
         run: |
@@ -56,50 +27,36 @@ jobs:
             cp /www/wwwroot/elearning/.env .
           fi
 
-      - name: Install Dependencies
-        run: npm ci || npm install
-
-      # Cache .next/cache for faster rebuilds
-      - name: Cache Next.js Build
-        uses: actions/cache@v4
-        with:
-          path: .next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**') }}
-          restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+      - name: Clean & Install Dependencies
+        run: |
+          rm -rf node_modules package-lock.json .next
+          npm install
 
       - name: Generate Prisma Client
         run: |
           if [ -f .env ]; then
             export $(grep -v '^#' .env | xargs)
           fi
-          ./node_modules/.bin/prisma generate || npx prisma@5 generate || npx prisma generate
+          ./node_modules/.bin/prisma generate || npx prisma generate
 
       - name: Backup Database
-        if: steps.filter.outputs.prisma == 'true'
         run: |
           echo "Creating database backup..."
 
-          # Check if pg_dump is available
           if ! command -v pg_dump &> /dev/null; then
             echo "⚠️  pg_dump not found. Skipping backup."
-            echo "   Install PostgreSQL client: 'sudo apt-get install postgresql-client'"
             exit 0
           fi
 
-          # Load env variables from .env
           if [ -f .env ]; then
             export $(grep -v '^#' .env | xargs)
           fi
           
-          # Use DIRECT_URL for pg_dump if available, otherwise DATABASE_URL
           DB_URL="${DIRECT_URL:-$DATABASE_URL}"
           
           if [ -z "$DB_URL" ]; then
             echo "⚠️  Database URL not found in .env. Skipping backup."
-            # Don't fail the deployment just because backup failed
           else
-            # Use a location inside the app directory that's already writable
             BACKUP_DIR=".backup/db"
             mkdir -p "$BACKUP_DIR"
             BACKUP_FILE="$BACKUP_DIR/backup-$(date +%Y%m%d-%H%M%S).sql"
@@ -108,7 +65,6 @@ jobs:
             if pg_dump --no-owner --no-acl "$DB_URL" > "$BACKUP_FILE" 2>&1; then
               echo "✅ Backup created: $(ls -lh "$BACKUP_FILE")"
 
-              # Also copy to /www/backup if it exists and is writable (optional)
               if [ -w "/www/backup" ]; then
                 sudo mkdir -p "/www/backup/elearning/db" 2>/dev/null || true
                 if [ -d "/www/backup/elearning/db" ]; then
@@ -117,28 +73,24 @@ jobs:
                 fi
               fi
 
-              # Keep only last 7 backups in app directory
               ls -t "$BACKUP_DIR"/backup-*.sql 2>/dev/null | tail -n +8 | xargs -r rm
               echo "✅ Old backups cleaned (keeping last 7 in $BACKUP_DIR)"
             else
               echo "❌ pg_dump failed. Check DATABASE_URL and connectivity."
               rm -f "$BACKUP_FILE"
-              # Don't fail deployment, just continue
             fi
           fi
 
       - name: Run Database Migrations
-        if: steps.filter.outputs.prisma == 'true'
         run: |
           if [ -f .env ]; then
             export $(grep -v '^#' .env | xargs)
-            ./node_modules/.bin/prisma db push || npx prisma@5 db push || npx prisma db push
+            ./node_modules/.bin/prisma db push || npx prisma db push
           else
             echo "⚠️  .env file not found. Skipping db push."
           fi
 
       - name: Build Application
-        if: steps.filter.outputs.src == 'true'
         run: |
           if [ -f .env ]; then
             export $(grep -v '^#' .env | xargs)
@@ -149,7 +101,6 @@ jobs:
           fi
 
       - name: Deploy to Production
-        if: steps.filter.outputs.src == 'true'
         run: |
           # 1. Sync standalone core files to root
           sudo /usr/bin/rsync -rltz --inplace --chown=www:www .next/standalone/ /www/wwwroot/elearning/
@@ -157,13 +108,12 @@ jobs:
           # 2. Sync prisma schema (for database access)
           sudo /usr/bin/rsync -rltz --inplace --chown=www:www prisma/ /www/wwwroot/elearning/prisma/
 
-          # 3. CRITICAL: Next.js standalone expects .next/static and public in the same folder as server.js
+          # 3. Next.js standalone expects .next/static and public in the same folder as server.js
           sudo /usr/bin/mkdir -p /www/wwwroot/elearning/.next
           sudo /usr/bin/rsync -rltz --inplace --delete --chown=www:www .next/static/ /www/wwwroot/elearning/.next/static/
           sudo /usr/bin/rsync -rltz --inplace --delete --exclude 'uploads' --chown=www:www public/ /www/wwwroot/elearning/public/
 
       - name: Restart Application
-        if: steps.filter.outputs.src == 'true'
         run: |
           cd /www/wwwroot/elearning
           NODE_ENV=production NODE_OPTIONS="--no-deprecation" pm2 restart elearning || NODE_ENV=production NODE_OPTIONS="--no-deprecation" pm2 start server.js --name "elearning" --node-args="--no-deprecation"
