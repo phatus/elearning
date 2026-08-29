@@ -357,6 +357,66 @@ export async function createElearningModule(primaryCourseId: number, formData: F
     }
 }
 
+export async function updateElearningModule(moduleId: number, courseId: number, formData: FormData) {
+    try {
+        const title = formData.get('title') as string
+        const content = formData.get('content') as string || null
+        const videoUrl = formData.get('videoUrl') as string || null
+        let documentUrl = formData.get('documentUrl') as string || null
+        const imageUrl = formData.get('imageUrl') as string || null
+
+        const documentFile = formData.get('documentFile') as File | null
+        if (documentFile && documentFile.size > 0 && typeof documentFile.arrayBuffer === 'function') {
+            const bytes = await documentFile.arrayBuffer()
+            const buffer = Buffer.from(bytes)
+            const uploadDir = path.join(process.cwd(), 'public', 'uploads')
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true })
+            }
+            const safeName = `${Date.now()}_${documentFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+            const filePath = path.join(uploadDir, safeName)
+            await fs.promises.writeFile(filePath, buffer)
+            documentUrl = `/uploads/${safeName}`
+        }
+
+        const dataToUpdate: any = {
+            title,
+            content,
+            videoUrl,
+            imageUrl
+        }
+        if (documentUrl !== null && documentUrl !== undefined && documentUrl !== '') {
+            dataToUpdate.documentUrl = documentUrl
+        }
+
+        await prisma.elearningModule.update({
+            where: { id: moduleId },
+            data: dataToUpdate
+        })
+
+        revalidatePath(`/guru/courses/${courseId}`)
+        revalidatePath('/guru')
+        return { success: true }
+    } catch (error: any) {
+        console.error("Error updating module:", error)
+        return { success: false, error: error?.message || "Gagal memperbarui modul" }
+    }
+}
+
+export async function deleteElearningModule(moduleId: number, courseId: number) {
+    try {
+        await prisma.elearningModule.delete({
+            where: { id: moduleId }
+        })
+        revalidatePath(`/guru/courses/${courseId}`)
+        revalidatePath('/guru')
+        return { success: true }
+    } catch (error: any) {
+        console.error("Error deleting module:", error)
+        return { success: false, error: error?.message || "Gagal menghapus modul" }
+    }
+}
+
 // ---------------------------------------------
 // ELEARNING ASSIGNMENTS (TUGAS/UJIAN)
 // ---------------------------------------------
@@ -419,6 +479,74 @@ export async function createElearningAssignment(primaryCourseId: number, formDat
     } catch (error: any) {
         console.error("Error creating assignment:", error)
         return { success: false, error: `Gagal membuat penugasan: ${error?.message || String(error)}` }
+    }
+}
+
+export async function updateElearningAssignment(assignmentId: number, courseId: number, formData: FormData) {
+    try {
+        const dueDateStr = formData.get('dueDate') as string
+        const dueDate = dueDateStr ? new Date(dueDateStr) : null
+        const title = formData.get('title') as string
+        const description = formData.get('description') as string || null
+        const kktp = formData.get('kktp') as string || null
+        const rubric = formData.get('rubric') as string || null
+        const type = formData.get('type') as string || 'TUGAS'
+        const maxScoreStr = formData.get('maxScore') as string
+        const maxScore = maxScoreStr ? parseFloat(maxScoreStr) : 100
+        let questionFileUrl = formData.get('questionFileUrl') as string || null
+
+        const questionFile = formData.get('questionFile') as File | null
+        if (questionFile && questionFile.size > 0 && typeof questionFile.arrayBuffer === 'function') {
+            const bytes = await questionFile.arrayBuffer()
+            const buffer = Buffer.from(bytes)
+            const uploadDir = path.join(process.cwd(), 'public', 'uploads')
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true })
+            }
+            const safeName = `${Date.now()}_soal_${questionFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+            const filePath = path.join(uploadDir, safeName)
+            await fs.promises.writeFile(filePath, buffer)
+            questionFileUrl = `/uploads/${safeName}`
+        }
+
+        const dataToUpdate: any = {
+            title,
+            type,
+            maxScore,
+            description,
+            kktp,
+            rubric,
+            dueDate
+        }
+        if (questionFileUrl !== null && questionFileUrl !== undefined && questionFileUrl !== '') {
+            dataToUpdate.questionFileUrl = questionFileUrl
+        }
+
+        await prisma.elearningAssignment.update({
+            where: { id: assignmentId },
+            data: dataToUpdate
+        })
+
+        revalidatePath(`/guru/courses/${courseId}`)
+        revalidatePath('/guru')
+        return { success: true }
+    } catch (error: any) {
+        console.error("Error updating assignment:", error)
+        return { success: false, error: `Gagal memperbarui penugasan: ${error?.message || String(error)}` }
+    }
+}
+
+export async function deleteElearningAssignment(assignmentId: number, courseId: number) {
+    try {
+        await prisma.elearningAssignment.delete({
+            where: { id: assignmentId }
+        })
+        revalidatePath(`/guru/courses/${courseId}`)
+        revalidatePath('/guru')
+        return { success: true }
+    } catch (error: any) {
+        console.error("Error deleting assignment:", error)
+        return { success: false, error: `Gagal menghapus penugasan: ${error?.message || String(error)}` }
     }
 }
 

@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import * as XLSX from 'xlsx'
-import { createElearningModule, createElearningAssignment, gradeSubmission } from "@/actions/elearning"
+import { createElearningModule, createElearningAssignment, gradeSubmission, updateElearningModule, deleteElearningModule, updateElearningAssignment, deleteElearningAssignment } from "@/actions/elearning"
 
 type Course = {
     id: number
@@ -29,6 +29,10 @@ export default function CourseDetailClient({ course, allCourses = [] }: { course
     const [loading, setLoading] = useState(false)
     const [activePdfModuleId, setActivePdfModuleId] = useState<number | null>(null)
     const [activeQuestionPdfId, setActiveQuestionPdfId] = useState<number | null>(null)
+
+    // Edit Modals state
+    const [editingModule, setEditingModule] = useState<any | null>(null)
+    const [editingAssignment, setEditingAssignment] = useState<any | null>(null)
 
     // Grading Modal State
     const [gradingAssignment, setGradingAssignment] = useState<any | null>(null)
@@ -167,6 +171,54 @@ export default function CourseDetailClient({ course, allCourses = [] }: { course
         setLoading(false)
     }
 
+    const handleUpdateModule = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        if (!editingModule) return
+        setLoading(true)
+        const formData = new FormData(e.currentTarget)
+        const res = await updateElearningModule(editingModule.id, course.id, formData)
+        if (res.success) {
+            setEditingModule(null)
+        } else {
+            alert(res.error || "Gagal meng-update modul")
+        }
+        setLoading(false)
+    }
+
+    const handleDeleteModule = async (moduleId: number, title: string) => {
+        if (!confirm(`Apakah Anda yakin ingin menghapus modul "${title}"?`)) return
+        setLoading(true)
+        const res = await deleteElearningModule(moduleId, course.id)
+        if (!res.success) {
+            alert(res.error || "Gagal menghapus modul")
+        }
+        setLoading(false)
+    }
+
+    const handleUpdateAssignment = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        if (!editingAssignment) return
+        setLoading(true)
+        const formData = new FormData(e.currentTarget)
+        const res = await updateElearningAssignment(editingAssignment.id, course.id, formData)
+        if (res.success) {
+            setEditingAssignment(null)
+        } else {
+            alert(res.error || "Gagal meng-update penugasan")
+        }
+        setLoading(false)
+    }
+
+    const handleDeleteAssignment = async (assignmentId: number, title: string) => {
+        if (!confirm(`Apakah Anda yakin ingin menghapus penugasan "${title}"?`)) return
+        setLoading(true)
+        const res = await deleteElearningAssignment(assignmentId, course.id)
+        if (!res.success) {
+            alert(res.error || "Gagal menghapus penugasan")
+        }
+        setLoading(false)
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-4 mb-2">
@@ -251,25 +303,41 @@ export default function CourseDetailClient({ course, allCourses = [] }: { course
                                                 </div>
                                             </div>
 
-                                            {mod.documentUrl && (
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <button
-                                                        onClick={() => setActivePdfModuleId(activePdfModuleId === mod.id ? null : mod.id)}
-                                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all shadow-sm"
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                        {activePdfModuleId === mod.id ? "Sembunyikan Dokumen PDF" : "Buka & Baca Dokumen PDF"}
-                                                    </button>
-                                                    <a
-                                                        href={mod.documentUrl}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl border border-indigo-200/60 transition-colors"
-                                                    >
-                                                        <ExternalLink className="h-3.5 w-3.5" /> Buka Tab Baru
-                                                    </a>
-                                                </div>
-                                            )}
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {mod.documentUrl && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => setActivePdfModuleId(activePdfModuleId === mod.id ? null : mod.id)}
+                                                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all shadow-sm"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                            {activePdfModuleId === mod.id ? "Sembunyikan PDF" : "Buka PDF"}
+                                                        </button>
+                                                        <a
+                                                            href={mod.documentUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl border border-indigo-200/60 transition-colors"
+                                                        >
+                                                            <ExternalLink className="h-3.5 w-3.5" /> Tab Baru
+                                                        </a>
+                                                    </>
+                                                )}
+                                                <button
+                                                    onClick={() => setEditingModule(mod)}
+                                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl border border-amber-200 transition-colors"
+                                                    title="Edit Modul"
+                                                >
+                                                    <Edit className="h-3.5 w-3.5" /> Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteModule(mod.id, mod.title)}
+                                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl border border-rose-200 transition-colors"
+                                                    title="Hapus Modul"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" /> Hapus
+                                                </button>
+                                            </div>
                                         </div>
 
                                         {mod.documentUrl && activePdfModuleId === mod.id && (
@@ -369,6 +437,22 @@ export default function CourseDetailClient({ course, allCourses = [] }: { course
                                                     >
                                                         <Download className="h-4 w-4" />
                                                         Export RDM
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => setEditingAssignment(assignment)}
+                                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl border border-amber-200 transition-colors"
+                                                        title="Edit Penugasan"
+                                                    >
+                                                        <Edit className="h-3.5 w-3.5" /> Edit
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleDeleteAssignment(assignment.id, assignment.title)}
+                                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl border border-rose-200 transition-colors"
+                                                        title="Hapus Penugasan"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" /> Hapus
                                                     </button>
                                                 </div>
                                             </div>
@@ -771,6 +855,140 @@ export default function CourseDetailClient({ course, allCourses = [] }: { course
                                 Tutup
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Edit Modul */}
+            {editingModule && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-lg bg-white rounded-3xl p-6 shadow-2xl space-y-4">
+                        <div className="flex justify-between items-center border-b pb-3">
+                            <h3 className="text-lg font-bold text-slate-900">Edit Modul Pembelajaran</h3>
+                            <button onClick={() => setEditingModule(null)} className="p-1 text-slate-400 hover:text-slate-600 rounded-full">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateModule} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1 uppercase">Judul Modul *</label>
+                                <input name="title" type="text" defaultValue={editingModule.title} required className="w-full p-3 border rounded-xl text-sm font-semibold" />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1 uppercase">Deskripsi / Ringkasan Materi</label>
+                                <textarea name="content" rows={3} defaultValue={editingModule.content || ''} className="w-full p-3 border rounded-xl text-sm resize-none" />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1 uppercase">Ganti File Dokumen Materi PDF (Opsional)</label>
+                                <input
+                                    name="documentFile"
+                                    type="file"
+                                    accept=".pdf"
+                                    className="w-full p-2 border rounded-xl text-xs bg-slate-50 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-colors"
+                                />
+                                {editingModule.documentUrl && (
+                                    <p className="text-xs text-slate-500 mt-1">File saat ini: {editingModule.documentUrl}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1 uppercase">URL Video (YouTube - Opsional)</label>
+                                <input name="videoUrl" type="url" defaultValue={editingModule.videoUrl || ''} placeholder="https://www.youtube.com/watch?v=..." className="w-full p-3 border rounded-xl text-sm" />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2 border-t">
+                                <button type="button" onClick={() => setEditingModule(null)} className="px-4 py-2 text-xs font-semibold text-slate-600">Batal</button>
+                                <button type="submit" disabled={loading} className="px-4 py-2 bg-amber-600 text-white text-xs font-bold rounded-xl disabled:opacity-50">
+                                    {loading ? "Menyimpan..." : "Simpan Perubahan"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Edit Penugasan */}
+            {editingAssignment && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-xl bg-white rounded-3xl p-6 shadow-2xl overflow-y-auto max-h-[90vh] space-y-4">
+                        <div className="flex justify-between items-center border-b pb-3">
+                            <h3 className="text-lg font-bold text-slate-900">Edit Penugasan / Ujian</h3>
+                            <button onClick={() => setEditingAssignment(null)} className="p-1 text-slate-400 hover:text-slate-600 rounded-full">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateAssignment} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1 uppercase">Judul Evaluasi / Penugasan *</label>
+                                <input name="title" type="text" defaultValue={editingAssignment.title} required className="w-full p-3 border rounded-xl text-sm font-semibold" />
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1 uppercase">Kategori / Tipe Evaluation *</label>
+                                    <select name="type" defaultValue={editingAssignment.type || 'TUGAS'} className="w-full p-3 border rounded-xl text-sm font-semibold bg-slate-50">
+                                        <option value="PRAKTIK">Tugas Praktik / Unjuk Kerja (Informatika / IPA)</option>
+                                        <option value="SUMATIF">Asesmen Sumatif (KKTP RDM)</option>
+                                        <option value="PROYEK">Tugas Proyek / Portofolio</option>
+                                        <option value="TUGAS">Tugas Harian (Teori)</option>
+                                        <option value="UJIAN">Ujian Resmi (PTS / PAS / PAT)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1 uppercase">Skor Maksimal</label>
+                                    <input name="maxScore" type="number" defaultValue={editingAssignment.maxScore || 100} className="w-full p-3 border rounded-xl text-sm" />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1 uppercase">Tenggat Waktu Pengumpulan (Opsional)</label>
+                                <input
+                                    name="dueDate"
+                                    type="datetime-local"
+                                    defaultValue={editingAssignment.dueDate ? new Date(editingAssignment.dueDate).toISOString().slice(0, 16) : ''}
+                                    className="w-full p-3 border rounded-xl text-sm bg-slate-50"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1 uppercase">Ganti File Soal / Panduan PDF (Opsional)</label>
+                                <input
+                                    name="questionFile"
+                                    type="file"
+                                    accept=".pdf,.doc,.docx,.ppt,.pptx,.zip"
+                                    className="w-full p-2 border rounded-xl text-xs bg-slate-50 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-colors"
+                                />
+                                {editingAssignment.questionFileUrl && (
+                                    <p className="text-xs text-slate-500 mt-1">File saat ini: {editingAssignment.questionFileUrl}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1 uppercase">KKTP (Opsional)</label>
+                                <input name="kktp" type="text" defaultValue={editingAssignment.kktp || ''} placeholder="Contoh: 75" className="w-full p-3 border rounded-xl text-sm" />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1 uppercase">Rubrik / Kriteria Penilaian (Opsional)</label>
+                                <textarea name="rubric" rows={2} defaultValue={editingAssignment.rubric || ''} placeholder="Contoh: Kecepatan 30%, Fungsi Fitur Kode 40%, Kerapian Tampilan 30%" className="w-full p-3 border rounded-xl text-sm resize-none" />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1 uppercase">Petunjuk Soal / Deskripsi Detail</label>
+                                <textarea name="description" rows={3} defaultValue={editingAssignment.description || ''} placeholder="Tulis petunjuk pengerjaan..." className="w-full p-3 border rounded-xl text-sm resize-none" />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2 border-t">
+                                <button type="button" onClick={() => setEditingAssignment(null)} className="px-4 py-2 text-xs font-semibold text-slate-600">Batal</button>
+                                <button type="submit" disabled={loading} className="px-4 py-2 bg-amber-600 text-white text-xs font-bold rounded-xl disabled:opacity-50">
+                                    {loading ? "Menyimpan..." : "Simpan Perubahan"}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
