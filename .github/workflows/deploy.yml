@@ -116,4 +116,6 @@ jobs:
       - name: Restart Application
         run: |
           cd /www/wwwroot/elearning
-          NODE_ENV=production NODE_OPTIONS="--no-deprecation" pm2 restart elearning || NODE_ENV=production NODE_OPTIONS="--no-deprecation" pm2 start server.js --name "elearning" --node-args="--no-deprecation"
+          pm2 delete elearning || true
+          NODE_ENV=production NODE_OPTIONS="--no-deprecation" pm2 start server.js --name "elearning" --node-args="--no-deprecation"
+          pm2 save
